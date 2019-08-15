@@ -91,6 +91,10 @@ type Object interface{}
 // NumberExpr is a number. e.g. 3.14
 type NumberExpr float64
 
+func (e NumberExpr) String() string {
+	return fmt.Sprintf("%f", e)
+}
+
 // Number is a number in the language
 type Number float64
 
