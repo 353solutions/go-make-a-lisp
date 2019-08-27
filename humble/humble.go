@@ -70,23 +70,15 @@ func (e ListExpression) Eval() (Object, error) {
 		return nil, fmt.Errorf("empty list expression")
 	}
 
+	rest := e[1:]
 	op, ok := e[0].(NameExpression)
 	if ok {
+		// speical forms
 		switch string(op) {
 		case "define": // (define n 3)
-			if len(e) != 3 {
-				return nil, fmt.Errorf("malformed define")
-			}
-			name, ok := e[1].(NameExpression)
-			if !ok {
-				return nil, fmt.Errorf("malformed define")
-			}
-			obj, err := e[2].Eval()
-			if err != nil {
-				return nil, err
-			}
-			environment[string(name)] = obj
-			return obj, nil
+			return evalDefine(rest)
+		case "or":
+			return evalOr(rest)
 		}
 
 		obj, err := e[0].Eval()
@@ -99,7 +91,7 @@ func (e ListExpression) Eval() (Object, error) {
 			return nil, fmt.Errorf("bad first expression in list")
 		}
 		var params []Object
-		for _, expr := range e[1:] {
+		for _, expr := range rest {
 			obj, err := expr.Eval()
 			if err != nil {
 				return nil, err
@@ -110,6 +102,22 @@ func (e ListExpression) Eval() (Object, error) {
 	}
 
 	return nil, fmt.Errorf("oops")
+}
+
+func evalDefine(args []Expression) (Object, error) {
+	if len(args) != 3 {
+		return nil, fmt.Errorf("malformed define")
+	}
+	name, ok := args[1].(NameExpression)
+	if !ok {
+		return nil, fmt.Errorf("malformed define")
+	}
+	obj, err := args[2].Eval()
+	if err != nil {
+		return nil, err
+	}
+	environment[string(name)] = obj
+	return obj, nil
 }
 
 // NumberExpression is a number
@@ -189,6 +197,10 @@ type Function struct {
 	name  string
 	nargs int
 	op    func(args []Number) (Object, error)
+}
+
+func (f *Function) String() string {
+	return f.name
 }
 
 // Call a function
