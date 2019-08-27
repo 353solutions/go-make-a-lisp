@@ -10,31 +10,61 @@ import (
 )
 
 var (
-	environment = map[string]Object{
-		"+": &Function{"+", 0, func(args []Number) (Object, error) {
-			total := Number(0.0)
-			for _, val := range args {
-				total += val
-			}
+	builtin = &Environment{
+		bindings: map[string]Object{
+			"+": &Function{"+", 0, func(args []Number) (Object, error) {
+				total := Number(0.0)
+				for _, val := range args {
+					total += val
+				}
 
-			return total, nil
-		}},
-		"*": &Function{"*", 0, func(args []Number) (Object, error) {
-			total := Number(1.0)
-			for _, val := range args {
-				total *= val
-			}
+				return total, nil
+			}},
+			"*": &Function{"*", 0, func(args []Number) (Object, error) {
+				total := Number(1.0)
+				for _, val := range args {
+					total *= val
+				}
 
-			return total, nil
-		}},
-		"%": &Function{"%", 2, func(args []Number) (Object, error) {
-			if args[1] == 0 {
-				return nil, fmt.Errorf("division by zero")
-			}
-			return Number(int(args[0]) % int(args[1])), nil
-		}},
+				return total, nil
+			}},
+			"%": &Function{"%", 2, func(args []Number) (Object, error) {
+				if args[1] == 0 {
+					return nil, fmt.Errorf("division by zero")
+				}
+				return Number(int(args[0]) % int(args[1])), nil
+			}},
+		},
 	}
 )
+
+// Environment holding names
+type Environment struct {
+	bindings map[string]Object
+	parent   *Environment
+}
+
+// Find environment holding name
+func (e *Environment) Find(name string) *Environment {
+	if _, ok := e.bindings[name]; ok {
+		return e
+	}
+
+	if e.parent == nil {
+		return nil
+	}
+	return e.parent.Find(name)
+}
+
+// Get value for name
+func (e *Environment) Get(name string) Object {
+	return e.bindings[name]
+}
+
+// Set a value for name
+func (e *Environment) Set(name string, value Object) {
+	e.bindings[name] = value
+}
 
 func main() {
 	fmt.Println("Welcome to Hubmle Lisp ☺")
@@ -58,14 +88,14 @@ func Tokenize(code string) []Token {
 
 // Expression to evaluate
 type Expression interface {
-	Eval() (Object, error)
+	Eval(env *Environment) (Object, error)
 }
 
 // ListExpression - (+ n 1)
 type ListExpression []Expression
 
 // Eval implements expression interface
-func (e ListExpression) Eval() (Object, error) {
+func (e ListExpression) Eval(env *Environment) (Object, error) {
 	if len(e) == 0 {
 		return nil, fmt.Errorf("empty list expression")
 	}
@@ -76,12 +106,16 @@ func (e ListExpression) Eval() (Object, error) {
 		// speical forms
 		switch string(op) {
 		case "define": // (define n 3)
-			return evalDefine(rest)
-		case "or":
-			return evalOr(rest)
+			return evalDefine(rest, env)
+		case "or": // (or) -> 0.0, (or 0 2 3) -> 2
+			return evalOr(rest, env)
+		case "and": // (and) -> 1.0, (and 1 0 2) -> 0
+			// FIXME
+		case "if": // (if (> x 1) 2 3)
+			// FIXME:
 		}
 
-		obj, err := e[0].Eval()
+		obj, err := e[0].Eval(env)
 		if err != nil {
 			return nil, err
 		}
@@ -92,7 +126,7 @@ func (e ListExpression) Eval() (Object, error) {
 		}
 		var params []Object
 		for _, expr := range rest {
-			obj, err := expr.Eval()
+			obj, err := expr.Eval(env)
 			if err != nil {
 				return nil, err
 			}
@@ -104,19 +138,37 @@ func (e ListExpression) Eval() (Object, error) {
 	return nil, fmt.Errorf("oops")
 }
 
-func evalDefine(args []Expression) (Object, error) {
-	if len(args) != 3 {
+func evalOr(args []Expression, env *Environment) (Object, error) {
+	for _, expr := range args {
+		obj, err := expr.Eval(env)
+		if err != nil {
+			return nil, err
+		}
+		n, ok := obj.(Number)
+		if !ok { // Anything that's not a number is true
+			return n, nil
+		}
+		// Only 0 is false
+		if n != 0 {
+			return n, nil
+		}
+	}
+	return Number(0.0), nil
+}
+
+func evalDefine(args []Expression, env *Environment) (Object, error) {
+	if len(args) != 2 {
 		return nil, fmt.Errorf("malformed define")
 	}
-	name, ok := args[1].(NameExpression)
+	name, ok := args[0].(NameExpression)
 	if !ok {
 		return nil, fmt.Errorf("malformed define")
 	}
-	obj, err := args[2].Eval()
+	obj, err := args[1].Eval(env)
 	if err != nil {
 		return nil, err
 	}
-	environment[string(name)] = obj
+	env.Set(string(name), obj)
 	return obj, nil
 }
 
@@ -124,7 +176,7 @@ func evalDefine(args []Expression) (Object, error) {
 type NumberExpression float64
 
 // Eval implements expression interface
-func (e NumberExpression) Eval() (Object, error) {
+func (e NumberExpression) Eval(env *Environment) (Object, error) {
 	return Number(e), nil
 }
 
@@ -137,12 +189,13 @@ func (e NumberExpression) String() string {
 type NameExpression string
 
 // Eval implements expression interface
-func (e NameExpression) Eval() (Object, error) {
-	obj, ok := environment[string(e)]
-	if !ok {
+func (e NameExpression) Eval(env *Environment) (Object, error) {
+	name := string(e)
+	env = env.Find(name)
+	if env == nil {
 		return nil, fmt.Errorf("unknown name - %s", e)
 	}
-	return obj, nil
+	return env.Get(name), nil
 }
 
 // ReadExpr reads an expression from slice of tokens
@@ -245,7 +298,7 @@ func repl() {
 		}
 		//fmt.Printf("expr → %#v\n", expr)
 
-		obj, err := expr.Eval()
+		obj, err := expr.Eval(builtin)
 		if err != nil {
 			fmt.Printf("ERROR: %s\n", err)
 			continue
