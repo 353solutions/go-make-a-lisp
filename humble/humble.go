@@ -20,7 +20,7 @@ type Token string
 // Tokenize splits the t list of tokens
 func Tokenize(code string) []Token {
 	code = strings.Replace(code, "(", " ( ", -1)
-	code = strings.Replace(code, ")", " )", -1)
+	code = strings.Replace(code, ")", " ) ", -1)
 	var tokens []Token
 	for _, tok := range strings.Fields(code) {
 		tokens = append(tokens, Token(tok))
@@ -30,6 +30,17 @@ func Tokenize(code string) []Token {
 
 // Expression to evaluate
 type Expression interface{}
+
+// ListExpression - (+ n 1)
+type ListExpression struct {
+	children []Expression
+}
+
+// NumberExpression is a number
+type NumberExpression float64
+
+// NameExpression is a name: n, if, ...
+type NameExpression string
 
 // ReadExpr reads an expression from slice of tokens
 func ReadExpr(tokens []Token) (Expression, []Token, error) {
