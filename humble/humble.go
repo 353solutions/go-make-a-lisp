@@ -39,7 +39,31 @@ type ListExpression []Expression
 
 // Eval implements expression interface
 func (e ListExpression) Eval() (Object, error) {
-	return nil, fmt.Errorf("not implemented")
+	if len(e) == 0 {
+		return nil, fmt.Errorf("empty list expression")
+	}
+
+	op, ok := e[0].(NameExpression)
+	if ok {
+		switch string(op) {
+		case "+": // (+ 3 2)
+			val := Number(0)
+			for _, expr := range e[1:] {
+				obj, err := expr.Eval()
+				if err != nil {
+					return nil, err
+				}
+				n, ok := obj.(Number)
+				if !ok {
+					return nil, fmt.Errorf("+ argument not a number: %T", obj)
+				}
+				val += n
+			}
+			return val, nil
+		}
+	}
+
+	return nil, fmt.Errorf("oops")
 }
 
 // NumberExpression is a number
