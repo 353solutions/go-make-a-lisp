@@ -9,6 +9,10 @@ import (
 	"strings"
 )
 
+var (
+	environment = make(map[string]Object)
+)
+
 func main() {
 	fmt.Println("Welcome to Hubmle Lisp ☺")
 	repl()
@@ -60,6 +64,20 @@ func (e ListExpression) Eval() (Object, error) {
 				val += n
 			}
 			return val, nil
+		case "define": // (define n 3)
+			if len(e) != 3 {
+				return nil, fmt.Errorf("malformed define")
+			}
+			name, ok := e[1].(NameExpression)
+			if !ok {
+				return nil, fmt.Errorf("malformed define")
+			}
+			obj, err := e[2].Eval()
+			if err != nil {
+				return nil, err
+			}
+			environment[string(name)] = obj
+			return obj, nil
 		}
 	}
 
@@ -84,7 +102,11 @@ type NameExpression string
 
 // Eval implements expression interface
 func (e NameExpression) Eval() (Object, error) {
-	return nil, fmt.Errorf("not impelemented")
+	obj, ok := environment[string(e)]
+	if !ok {
+		return nil, fmt.Errorf("unknown name - %s", e)
+	}
+	return obj, nil
 }
 
 // ReadExpr reads an expression from slice of tokens
