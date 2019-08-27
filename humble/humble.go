@@ -10,7 +10,30 @@ import (
 )
 
 var (
-	environment = make(map[string]Object)
+	environment = map[string]Object{
+		"+": &Function{"+", 0, func(args []Number) (Object, error) {
+			total := Number(0.0)
+			for _, val := range args {
+				total += val
+			}
+
+			return total, nil
+		}},
+		"*": &Function{"*", 0, func(args []Number) (Object, error) {
+			total := Number(1.0)
+			for _, val := range args {
+				total *= val
+			}
+
+			return total, nil
+		}},
+		"%": &Function{"%", 2, func(args []Number) (Object, error) {
+			if args[1] == 0 {
+				return nil, fmt.Errorf("division by zero")
+			}
+			return Number(int(args[0]) % int(args[1])), nil
+		}},
+	}
 )
 
 func main() {
@@ -50,20 +73,6 @@ func (e ListExpression) Eval() (Object, error) {
 	op, ok := e[0].(NameExpression)
 	if ok {
 		switch string(op) {
-		case "+": // (+ 3 2)
-			val := Number(0)
-			for _, expr := range e[1:] {
-				obj, err := expr.Eval()
-				if err != nil {
-					return nil, err
-				}
-				n, ok := obj.(Number)
-				if !ok {
-					return nil, fmt.Errorf("+ argument not a number: %T", obj)
-				}
-				val += n
-			}
-			return val, nil
 		case "define": // (define n 3)
 			if len(e) != 3 {
 				return nil, fmt.Errorf("malformed define")
@@ -79,6 +88,25 @@ func (e ListExpression) Eval() (Object, error) {
 			environment[string(name)] = obj
 			return obj, nil
 		}
+
+		obj, err := e[0].Eval()
+		if err != nil {
+			return nil, err
+		}
+
+		fn, ok := obj.(*Function)
+		if !ok {
+			return nil, fmt.Errorf("bad first expression in list")
+		}
+		var params []Object
+		for _, expr := range e[1:] {
+			obj, err := expr.Eval()
+			if err != nil {
+				return nil, err
+			}
+			params = append(params, obj)
+		}
+		return fn.Call(params)
 	}
 
 	return nil, fmt.Errorf("oops")
@@ -155,6 +183,30 @@ type Object interface{}
 
 // Number object
 type Number float64
+
+// Function is a function
+type Function struct {
+	name  string
+	nargs int
+	op    func(args []Number) (Object, error)
+}
+
+// Call a function
+func (f *Function) Call(args []Object) (Object, error) {
+	if f.nargs != 0 && f.nargs != len(args) {
+		return nil, fmt.Errorf("%s: wrong number of arguments", f.name)
+	}
+
+	var vals []Number
+	for i, obj := range args {
+		val, ok := obj.(Number)
+		if !ok {
+			return nil, fmt.Errorf("%s: argument %d of type %T (wanted number)", f.name, i, obj)
+		}
+		vals = append(vals, val)
+	}
+	return f.op(vals)
+}
 
 // Read, eval, print, loop
 func repl() {

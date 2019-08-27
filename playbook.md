@@ -26,6 +26,9 @@
     - humble.go
     - humble.go:tokenize
 	- token is just a str (file, lineno ...)
+    - run & repl
+	- fmt.Stringer
+	- readline for matching ()
 - Parse
     - https://golang.org/ref/spec
     - $ vim /opt/go/src/go/parser/parser.go +2122
@@ -40,9 +43,6 @@
 	- need builtin
 	- names + case sensitive
 	- lisp 1/2
-    - run & repl
-	- fmt.Stringer
-	- readline for matching ()
     - if
 	- what are booleans? (we'll use 1.0 & 0.0)
 	- short circuit (`_examples/short.go`)

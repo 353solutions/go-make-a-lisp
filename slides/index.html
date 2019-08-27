@@ -80,8 +80,7 @@ table {
 }
 
 collatz(7) // 22</code></pre>
-        <pre><code class="scheme">; Return the next number in Collatz conjecture
-(define collatz
+        <pre><code class="scheme">(define collatz
   (lambda (n)
     (if (= (% n 2) 0)
       (/ n 2)
