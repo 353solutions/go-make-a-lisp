@@ -30,13 +30,25 @@ func Tokenize(code string) []Token {
 }
 
 // Expression to evaluate
-type Expression interface{}
+type Expression interface {
+	Eval() (Object, error)
+}
 
 // ListExpression - (+ n 1)
 type ListExpression []Expression
 
+// Eval implements expression interface
+func (e ListExpression) Eval() (Object, error) {
+	return nil, fmt.Errorf("not implemented")
+}
+
 // NumberExpression is a number
 type NumberExpression float64
+
+// Eval implements expression interface
+func (e NumberExpression) Eval() (Object, error) {
+	return Number(e), nil
+}
 
 // String implements fmt.Stringer
 func (e NumberExpression) String() string {
@@ -45,6 +57,11 @@ func (e NumberExpression) String() string {
 
 // NameExpression is a name: n, if, ...
 type NameExpression string
+
+// Eval implements expression interface
+func (e NameExpression) Eval() (Object, error) {
+	return nil, fmt.Errorf("not impelemented")
+}
 
 // ReadExpr reads an expression from slice of tokens
 func ReadExpr(tokens []Token) (Expression, []Token, error) {
@@ -87,6 +104,12 @@ func ReadExpr(tokens []Token) (Expression, []Token, error) {
 	return NameExpression(lit), tokens, nil
 }
 
+// Object in the language
+type Object interface{}
+
+// Number object
+type Number float64
+
 // Read, eval, print, loop
 func repl() {
 	rdr := bufio.NewReader(os.Stdin)
@@ -103,14 +126,21 @@ func repl() {
 		}
 
 		tokens := Tokenize(text)
-		fmt.Println("tokens →", tokens)
+		//fmt.Println("tokens →", tokens)
 
 		expr, _, err := ReadExpr(tokens)
 		if err != nil {
-			fmt.Printf("ERROR: %s", err)
+			fmt.Printf("ERROR: %s\n", err)
 			continue
 		}
-		fmt.Printf("expr → %#v\n", expr)
+		//fmt.Printf("expr → %#v\n", expr)
+
+		obj, err := expr.Eval()
+		if err != nil {
+			fmt.Printf("ERROR: %s\n", err)
+			continue
+		}
+		fmt.Println(obj)
 	}
 	// (* n 3)
 	// (+ (* n 3) 1)
