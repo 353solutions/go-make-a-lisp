@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strconv"
 	"strings"
 )
 
@@ -31,6 +32,8 @@ func Tokenize(code string) []Token {
 // Expression to evaluate
 type Expression interface{}
 
+// type ListExpression []Expression
+
 // ListExpression - (+ n 1)
 type ListExpression struct {
 	children []Expression
@@ -38,6 +41,11 @@ type ListExpression struct {
 
 // NumberExpression is a number
 type NumberExpression float64
+
+// String implements fmt.Stringer
+func (e NumberExpression) String() string {
+	return fmt.Sprintf("%f", e)
+}
 
 // NameExpression is a name: n, if, ...
 type NameExpression string
@@ -66,7 +74,7 @@ func ReadExpr(tokens []Token) (Expression, []Token, error) {
 		}
 
 		tokens = tokens[1:] // remove closing ')'
-		// FIXME: List expression
+		return &ListExpression{children}, tokens, nil
 	}
 
 	switch tok {
@@ -74,8 +82,13 @@ func ReadExpr(tokens []Token) (Expression, []Token, error) {
 		return nil, nil, fmt.Errorf("unexpected ')'")
 	}
 
-	// FIXME: number or symbol
-	return nil, nil, fmt.Errorf("FIXME")
+	// Number or symbol
+	lit := string(tok)
+	val, err := strconv.ParseFloat(lit, 64)
+	if err == nil {
+		return NumberExpression(val), tokens, nil
+	}
+	return NameExpression(lit), tokens, nil
 }
 
 // Read, eval, print, loop
@@ -101,6 +114,8 @@ func repl() {
 			fmt.Printf("ERROR: %s", err)
 			continue
 		}
-		fmt.Printf("expr → %s\n", expr)
+		fmt.Printf("expr → %#v\n", expr)
 	}
+	// (* n 3)
+	// (+ (* n 3) 1)
 }
