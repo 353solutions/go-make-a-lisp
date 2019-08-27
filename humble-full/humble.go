@@ -396,6 +396,7 @@ func (l *Lambda) String() string {
 	}
 	fmt.Fprintf(&buf, ") ")
 	fmt.Fprintf(&buf, "%s", l.body)
+	fmt.Fprint(&buf, ")")
 	return buf.String()
 }
 

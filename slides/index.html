@@ -343,14 +343,17 @@ ast.Print(fset, f)</code></pre>
     if n &lt; 0.0 {
 	return 0.0 
     }
-    return n 
-	</code></pre>
-	<pre><code>2           0 LOAD_FAST                0 (n)
-            2 LOAD_CONST               1 (0.0)
-            4 COMPARE_OP               0 (&lt;)
-            6 POP_JUMP_IF_FALSE       12
-3           8 LOAD_CONST               1 (0.0)
-           10 RETURN_VALUE</code></pre>
+    return n</code></pre>
+	<pre><code>0x0000 00000 (relu.go:5)	PCDATA	$2, $0
+0x0000 00000 (relu.go:4)	PCDATA	$0, $0
+0x0000 00000 (relu.go:4)	XORPS	X0, X0
+0x0003 00003 (relu.go:4)	MOVSD	"".n+8(SP), X1
+0x0009 00009 (relu.go:4)	UCOMISD	X1, X0
+0x000d 00013 (relu.go:4)	JLS	22
+0x000f 00015 (relu.go:5)	MOVSD	X0, "".~r1+16(SP)
+0x0015 00021 (relu.go:5)	RET
+0x0016 00022 (relu.go:7)	MOVSD	X1, "".~r1+16(SP)
+0x001c 00028 (relu.go:7)	RET</code></pre>
       </section>
       <section>
         <h1>Optimizations</h1>

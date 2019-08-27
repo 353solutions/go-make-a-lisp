@@ -22,10 +22,12 @@
     ~~~
     - show it ignore whitespace
     - $ vim /opt/go/src/go/scanner/scanner.go +688
+    - https://golang.org/ref/spec
     - humble.go
     - humble.go:tokenize
 	- token is just a str (file, lineno ...)
 - Parse
+    - https://golang.org/ref/spec
     - $ vim /opt/go/src/go/parser/parser.go +2122
     - `$ go run _examples/ast.go`
     - reader
