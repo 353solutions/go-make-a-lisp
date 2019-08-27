@@ -32,12 +32,8 @@ func Tokenize(code string) []Token {
 // Expression to evaluate
 type Expression interface{}
 
-// type ListExpression []Expression
-
 // ListExpression - (+ n 1)
-type ListExpression struct {
-	children []Expression
-}
+type ListExpression []Expression
 
 // NumberExpression is a number
 type NumberExpression float64
@@ -74,7 +70,7 @@ func ReadExpr(tokens []Token) (Expression, []Token, error) {
 		}
 
 		tokens = tokens[1:] // remove closing ')'
-		return &ListExpression{children}, tokens, nil
+		return ListExpression(children), tokens, nil
 	}
 
 	switch tok {
