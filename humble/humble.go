@@ -95,5 +95,12 @@ func repl() {
 
 		tokens := Tokenize(text)
 		fmt.Println("tokens →", tokens)
+
+		expr, _, err := ReadExpr(tokens)
+		if err != nil {
+			fmt.Printf("ERROR: %s", err)
+			continue
+		}
+		fmt.Printf("expr → %s\n", expr)
 	}
 }
