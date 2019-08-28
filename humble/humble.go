@@ -95,6 +95,12 @@ type Expression interface {
 // ListExpression - (+ n 1)
 type ListExpression []Expression
 
+func (e ListExpression) String() string {
+	s := fmt.Sprintf("%v", []Expression(e))
+	// Replace surrounding [] with ()
+	return "(" + s[1:len(s)-1] + ")"
+}
+
 // Eval implements expression interface
 func (e ListExpression) Eval(env *Environment) (Object, error) {
 	if len(e) == 0 {
