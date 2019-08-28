@@ -53,9 +53,11 @@ var logicTestCases = []struct {
 	{"(or)", Number(0.0)},
 	{"(or 1 2)", Number(1.0)},
 	{"(or 0 2 1)", Number(2.0)},
+	{"(or 1 (% 1 0))", Number(1.0)}, // short circuit
 	{"(and)", Number(1.0)},
 	{"(and 1 2)", Number(2.0)},
 	{"(and 1 0 3)", Number(0.0)},
+	{"(and 0 (% 1 0))", Number(0.0)}, // short circuit
 }
 
 func TestLogic(t *testing.T) {

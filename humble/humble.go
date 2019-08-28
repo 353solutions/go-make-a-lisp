@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"fmt"
 	"io"
 	"os"
@@ -113,6 +114,8 @@ func (e ListExpression) Eval(env *Environment) (Object, error) {
 			// FIXME
 		case "if": // (if (> x 1) 2 3)
 			// FIXME:
+		case "lambda": // (lambda (n) (+ n 1))
+			return evalLambda(rest, env)
 		}
 
 		obj, err := e[0].Eval(env)
@@ -120,7 +123,7 @@ func (e ListExpression) Eval(env *Environment) (Object, error) {
 			return nil, err
 		}
 
-		fn, ok := obj.(*Function)
+		fn, ok := obj.(Callable)
 		if !ok {
 			return nil, fmt.Errorf("bad first expression in list")
 		}
@@ -136,6 +139,76 @@ func (e ListExpression) Eval(env *Environment) (Object, error) {
 	}
 
 	return nil, fmt.Errorf("oops")
+}
+
+func (l *Lambda) String() string {
+	var buf bytes.Buffer
+	fmt.Fprintf(&buf, "(lambda (")
+	// Can't use strings.Join on []Symbol
+	for i, sym := range l.params {
+		fmt.Fprint(&buf, sym)
+		if i < len(l.params)-1 {
+			fmt.Fprint(&buf, " ")
+		}
+	}
+	fmt.Fprintf(&buf, ") ")
+	fmt.Fprintf(&buf, "%s", l.body)
+	fmt.Fprint(&buf, ")")
+	return buf.String()
+}
+
+// Callable can be used as a function
+type Callable interface {
+	Call(args []Object) (Object, error)
+}
+
+// (lambda (n) (+ n 1)))
+func evalLambda(args []Expression, env *Environment) (Object, error) {
+	if len(args) != 2 {
+		return nil, fmt.Errorf("malformed lambda")
+	}
+
+	le, ok := args[0].(ListExpression)
+	if !ok {
+		return nil, fmt.Errorf("malformed lambda")
+	}
+
+	params := make([]NameExpression, len(le))
+	for i, e := range le {
+		s, ok := e.(NameExpression)
+		if !ok {
+			return nil, fmt.Errorf("malformed lambda")
+		}
+		params[i] = s
+	}
+	obj := &Lambda{
+		env:    env,
+		params: params,
+		body:   args[1],
+	}
+	return obj, nil
+}
+
+// Call implements Callable
+func (l *Lambda) Call(args []Object) (Object, error) {
+	if len(args) != len(l.params) {
+		return nil, fmt.Errorf("wrong number of arguments (want %d, got %d)", len(l.params), args)
+	}
+
+	m := make(map[string]Object)
+	for i, name := range l.params {
+		m[string(name)] = args[i]
+	}
+
+	env := &Environment{m, l.env}
+	return l.body.Eval(env)
+}
+
+// Lambda object
+type Lambda struct {
+	env    *Environment
+	params []NameExpression
+	body   Expression
 }
 
 func evalOr(args []Expression, env *Environment) (Object, error) {
