@@ -117,16 +117,14 @@ func (e Symbol) Eval(env *Environment) (Object, error) {
 }
 
 // ListExpr is a list expression. e.g. (* 4 5)
-type ListExpr struct {
-	children []Expression
-}
+type ListExpr []Expression
 
-func (e *ListExpr) String() string {
+func (e ListExpr) String() string {
 	var buf bytes.Buffer
 	fmt.Fprintf(&buf, "(")
-	for i, c := range e.children {
+	for i, c := range e {
 		fmt.Fprintf(&buf, "%s", c)
-		if i < len(e.children)-1 {
+		if i < len(e)-1 {
 			fmt.Fprintf(&buf, " ")
 		}
 	}
@@ -135,15 +133,14 @@ func (e *ListExpr) String() string {
 }
 
 // Eval evaluates value
-func (e *ListExpr) Eval(env *Environment) (Object, error) {
-	if len(e.children) == 0 {
+func (e ListExpr) Eval(env *Environment) (Object, error) {
+	if len(e) == 0 {
 		return nil, fmt.Errorf("empty list expression")
 	}
 
-	rest := e.children[1:]
-
+	rest := e[1:]
 	// Try special forms first
-	op, ok := e.children[0].(Symbol)
+	op, ok := e[0].(Symbol)
 	if ok {
 		switch op {
 		case "define": // (define n 27)
@@ -161,7 +158,7 @@ func (e *ListExpr) Eval(env *Environment) (Object, error) {
 		}
 	}
 
-	obj, err := e.children[0].Eval(env)
+	obj, err := e[0].Eval(env)
 	if err != nil {
 		return nil, err
 	}
@@ -290,13 +287,13 @@ func evalLambda(args []Expression, env *Environment) (Object, error) {
 		return nil, fmt.Errorf("malformed lambda")
 	}
 
-	le, ok := args[0].(*ListExpr)
+	le, ok := args[0].(ListExpr)
 	if !ok {
 		return nil, fmt.Errorf("malformed lambda")
 	}
 
-	params := make([]Symbol, len(le.children))
-	for i, e := range le.children {
+	params := make([]Symbol, len(le))
+	for i, e := range le {
 		s, ok := e.(Symbol)
 		if !ok {
 			return nil, fmt.Errorf("malformed lambda")
@@ -424,7 +421,7 @@ func ReadExpr(tokens []Token) (Expression, []Token, error) {
 		}
 
 		tokens = tokens[1:] // remove closing ')'
-		return &ListExpr{children}, tokens, nil
+		return ListExpr(children), tokens, nil
 	}
 
 	switch tok {
