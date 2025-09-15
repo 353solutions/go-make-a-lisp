@@ -1,7 +1,7 @@
 package main
 
 import (
-	"io/ioutil"
+	"os"
 	"testing"
 )
 
@@ -32,7 +32,7 @@ var evalTestCases = []struct {
 func TestEval(t *testing.T) {
 	for _, tc := range evalTestCases {
 		t.Run(tc.fileName, func(t *testing.T) {
-			data, err := ioutil.ReadFile(tc.fileName)
+			data, err := os.ReadFile(tc.fileName)
 			if err != nil {
 				t.Fatal("open")
 			}
@@ -68,5 +68,12 @@ func TestLogic(t *testing.T) {
 				t.Fatalf("result mismatch: %#v != %#v", tc.out, out)
 			}
 		})
+	}
+}
+
+func TestRunFile(t *testing.T) {
+	err := runFile("fact.scm")
+	if err != nil {
+		t.Fatal(err)
 	}
 }

@@ -3,9 +3,12 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"flag"
 	"fmt"
 	"io"
 	"os"
+	"path"
+	"regexp"
 	"strconv"
 	"strings"
 )
@@ -61,6 +64,17 @@ func init() {
 			}
 			return args[0] / args[1], nil
 		}},
+		"print": &Function{"print", 0, func(args []Number) (Object, error) {
+			var buf bytes.Buffer
+			for i, v := range args {
+				fmt.Fprintf(&buf, "%.2f", v)
+				if i < len(args)-1 {
+					fmt.Fprintf(&buf, " ")
+				}
+			}
+			fmt.Println(buf.String())
+			return float64(len(buf.Bytes())), nil
+		}},
 	}
 
 	builtins = &Environment{m, nil}
@@ -69,14 +83,19 @@ func init() {
 // Token in the language
 type Token string
 
+var commentRe = regexp.MustCompile(`;.*?\n`)
+
 // Tokenize splits the t list of tokens
 func Tokenize(code string) []Token {
-	code = strings.Replace(code, "(", " ( ", -1)
-	code = strings.Replace(code, ")", " ) ", -1)
+	code = commentRe.ReplaceAllString(code, "")
+	code = strings.ReplaceAll(code, "(", " ( ")
+	code = strings.ReplaceAll(code, ")", " ) ")
+
 	var tokens []Token
 	for _, tok := range strings.Fields(code) {
 		tokens = append(tokens, Token(tok))
 	}
+
 	return tokens
 }
 
@@ -86,7 +105,7 @@ type Expression interface {
 }
 
 // Object in the language
-type Object interface{}
+type Object any
 
 // NumberExpr is a number. e.g. 3.14
 type NumberExpr float64
@@ -200,12 +219,12 @@ func evalDefine(args []Expression, env *Environment) (Object, error) {
 
 func evalSet(args []Expression, env *Environment) (Object, error) {
 	if len(args) != 2 {
-		return nil, fmt.Errorf("wrong number of arguments for 'define'")
+		return nil, fmt.Errorf("wrong number of arguments for 'set'")
 	}
 
 	s, ok := args[0].(Symbol)
 	if !ok {
-		return nil, fmt.Errorf("bad name in 'define'")
+		return nil, fmt.Errorf("bad name in 'set'")
 	}
 
 	env = env.Find(s)
@@ -223,8 +242,11 @@ func evalSet(args []Expression, env *Environment) (Object, error) {
 }
 
 func evalIf(args []Expression, env *Environment) (Object, error) {
-	if len(args) != 3 { // TODO: if without else
-		return nil, fmt.Errorf("wrong number of arguments for 'define'")
+	switch len(args) {
+	case 2, 3:
+		// OK
+	default:
+		return nil, fmt.Errorf("wrong number of arguments for 'if'")
 	}
 
 	cond, err := args[0].Eval(env)
@@ -235,7 +257,12 @@ func evalIf(args []Expression, env *Environment) (Object, error) {
 	if cond == 1.0 {
 		return args[1].Eval(env)
 	}
-	return args[2].Eval(env)
+
+	if len(args) == 3 {
+		return args[2].Eval(env)
+	}
+
+	return Number(0.0), nil
 }
 
 func evalOr(args []Expression, env *Environment) (Object, error) {
@@ -354,7 +381,7 @@ func (f *Function) Call(args []Object) (Object, error) {
 	return val, nil
 }
 
-func (f *Function) errorf(format string, args ...interface{}) error {
+func (f *Function) errorf(format string, args ...any) error {
 	msg := fmt.Sprintf(format, args...)
 	return fmt.Errorf("%s - %s", f.name, msg)
 }
@@ -499,12 +526,55 @@ func repl() {
 }
 
 func printError(err error) {
-	fmt.Printf("\033[31mERROR: %s\033[0m\n", err)
+	fmt.Fprintf(os.Stderr, "\033[31mERROR: %s\033[0m\n", err)
+}
+
+func runFile(fileName string) error {
+	data, err := os.ReadFile(fileName)
+	if err != nil {
+		return err
+	}
+
+	tokens := Tokenize(string(data))
+
+	for len(tokens) > 0 {
+		var expr Expression
+		var err error
+		expr, tokens, err = ReadExpr(tokens)
+		if err != nil {
+			return err
+		}
+
+		_, err = expr.Eval(builtins)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // rlwrap go run humble.go
 func main() {
-	fmt.Println("Welcome to Hubmle lisp (hit CTRL-D to quit)")
-	repl()
-	fmt.Println("\nkthxbai ☺")
+	flag.Usage = func() {
+		fmt.Fprintf(os.Stderr, "usage: %s [FILE]\n", path.Base(os.Args[0]))
+		fmt.Fprintln(os.Stderr, "Without a file will invoke REPL.")
+		flag.PrintDefaults()
+	}
+	flag.Parse()
+
+	switch flag.NArg() {
+	case 0:
+		fmt.Println("Welcome to Hubmle lisp (hit CTRL-D to quit)")
+		repl()
+		fmt.Println("\nkthxbai ☺")
+	case 1:
+		err := runFile(flag.Arg(0))
+		if err != nil {
+			printError(err)
+			os.Exit(1)
+		}
+	default:
+		fmt.Fprintln(os.Stderr, "error: wrong number of arguments.")
+		os.Exit(1)
+	}
 }
